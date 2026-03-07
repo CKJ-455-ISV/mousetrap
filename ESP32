@@ -1,0 +1,77 @@
+#include <ESP32Servo.h>
+
+// Pin Definitions
+const int buttonPin = 19;
+const int servoPin = 22;
+const int trigPin = 17;
+const int echoPin = 16;
+const int ledPin = 2; 
+
+// --- CALIBRATION AREA ---
+const int turnForward  = 485; 
+const int turnBackward = 505; 
+const int thresholdDistance = 15;
+
+// State Variables
+bool sensorEnabled = false; 
+Servo myServo;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
+}
+
+void triggerRotation() {
+  Serial.println("Executing Precision Rotation (Inverted)...");
+  
+  // 1. Move Forward (Now using 0 for inverted direction)
+  myServo.attach(servoPin);
+  myServo.write(0);      
+  delay(turnForward);     
+  myServo.detach();        
+  
+  delay(1000); // Pause
+  
+  // 2. Move Backward (Now using 180 to return)
+  myServo.attach(servoPin);
+  myServo.write(180);        
+  delay(turnBackward);    
+  myServo.detach();        
+}
+
+long getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH, 30000); 
+  return (duration * 0.034 / 2);
+}
+
+void loop() {
+  // Toggle Logic
+  if (digitalRead(buttonPin) == LOW) {
+    delay(50); 
+    sensorEnabled = !sensorEnabled;
+    digitalWrite(ledPin, sensorEnabled ? HIGH : LOW);
+    Serial.print("Sensor Status: ");
+    Serial.println(sensorEnabled ? "ENABLED" : "DISABLED");
+    while(digitalRead(buttonPin) == LOW);
+    delay(50);
+  }
+
+  // Sensor Logic
+  if (sensorEnabled) {
+    long currentDistance = getDistance();
+    if (currentDistance > 0 && currentDistance <= thresholdDistance) {
+      triggerRotation();
+      delay(2000); 
+    }
+  }
+  delay(60); 
+}
